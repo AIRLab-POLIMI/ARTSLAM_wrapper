@@ -39,6 +39,7 @@ namespace lots::slam::wrapper {
         node->declare_parameter("global_frame", rclcpp::ParameterValue("map"));
         node->declare_parameter("odom_frame", rclcpp::ParameterValue("odom"));
         node->declare_parameter("imu_topic", rclcpp::ParameterValue(""));
+        node->declare_parameter("gnss_topic", rclcpp::ParameterValue(""));
         node->declare_parameter("delay", rclcpp::ParameterValue(200000000));
 
         node->get_parameter<double>("value", param_value);
@@ -48,6 +49,8 @@ namespace lots::slam::wrapper {
         node->get_parameter<std::string>("global_frame", global_frame);
         node->get_parameter<std::string>("odom_frame", odom_frame);
         node->get_parameter<uint>("delay", delay);
+        config_file = "/home/matteo/ros2_ws/src/ARTSLAM_wrapper/config/KITTI.json";
+        std::cout << config_file << std::endl;
 
         tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(node);
 
@@ -60,6 +63,9 @@ namespace lots::slam::wrapper {
 
         skeleton.start(node, config_file);
         skeleton.registerObserver(this);
+
+        odom_pub_ = node->create_publisher<nav_msgs::msg::Odometry>("/state_estimation", 1);
+
     }
 
     /**
@@ -158,6 +164,16 @@ namespace lots::slam::wrapper {
             traj_marker.colors[i].g = p;
             traj_marker.colors[i].b = 0.0;
             traj_marker.colors[i].a = 1.0;
+
+            // publish an odometry msg on /state estimation with the last xy coordinates
+            if (i == poses.size() - 1) {
+                nav_msgs::msg::Odometry msg;
+                msg.header.frame_id = "map";
+                msg.header.stamp = node->now();
+                msg.pose.pose.position.x = pos.x();
+                msg.pose.pose.position.y = pos.y();
+                odom_pub_->publish(msg);
+            }
         }
 
         markers_pub->publish(markers);

@@ -8,7 +8,9 @@ def generate_launch_description():
 
     ld = LaunchDescription()
 
-    config_file = os.path.join(
+    config_file = '/home/matteo/ros2_ws/src/ARTSLAM_wrapper/config/KITTI.json'
+
+    results_path = os.path.join(
       get_package_share_directory('artslam_wrapper'),
       'config',
       'KITTI.json'
@@ -21,10 +23,11 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'configuration_file': config_file,
-            'results_path': '/LOTS/results/',
-            'imu_topic': '/ouster/imu'
+            'results_path': '/home/matteo/risultati/',
+            'imu_topic': '/imu/data',
+            'gnss_topic': '/fix'
         }],
-        # prefix=['xterm -e gdb -q -ex run --args']
+        #prefix=['xterm -e gdb -q -ex run --args']
     )
 
     ld.add_action(artslam_wrapper_node)

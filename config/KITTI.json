@@ -55,7 +55,7 @@
             "tilt_angle": 0.0,
             "sensor_height": 1.0,
             "clipping_range": 1.0,
-            "floor_points_threshold": 512,
+            "floor_points_threshold": 256,
             "use_normal_filtering": true,
             "normal_filtering_threshold": 10.0,
             "rough_ground_check": false,
@@ -66,17 +66,17 @@
             "enable_tracker": true,
             "keyframe_delta_trans": 3.0,
             "keyframe_delta_angle": 1.0,
-            "min_height": -1.6,
-            "use_imu_preintegration": true,
+            "min_height": -0.7,
+            "use_imu_preintegration": false,
             "use_prior_odometry": false,
             "verbose": false
           },
           "registration_tracker": {
             "registration_method_name": "FAST_GICP",
             "registration_num_threads": 0,
-            "registration_transform_epsilon": 1.0e-2,
+            "registration_transform_epsilon": 1.0e-1,
             "registration_max_iterations": 64,
-            "registration_max_corr_distance": 2.0,
+            "registration_max_corr_distance": 5.0,
             "registration_corr_randomness": 20,
             "registration_resolution": 1.0,
             "registration_use_reciprocal_corr": false,
@@ -97,29 +97,29 @@
       "name": "full_lidar",
       "enabled": true,
       "loop_detector": {
-        "distance_threshold": 60.0,
-        "accumulated_distance_threshold": 25.0,
+        "distance_threshold": 10.0,
+        "accumulated_distance_threshold": 20.0,
         "distance_from_last_edge_threshold": 5.0,
         "use_scan_context": true,
-        "best_k_contexts": 2,
+        "best_k_contexts": 1,
         "model": "",
         "fitness_score_max_range": 100000.0,
-        "fitness_score_threshold": 2.0,
-        "verbose": false
+        "fitness_score_threshold": 0.4,
+        "verbose": true
       },
       "registration_loop_detector": {
         "registration_method_name": "FAST_GICP",
         "registration_num_threads": 0,
-        "registration_transform_epsilon": 1e-3,
+        "registration_transform_epsilon": 1e-2,
         "registration_max_iterations": 128,
-        "registration_max_corr_distance": 10.0,
+        "registration_max_corr_distance": 5.0,
         "registration_corr_randomness": 20,
         "registration_resolution": 1.0,
         "registration_use_reciprocal_corr": false,
         "registration_max_optimizer_iterations": 20,
         "registration_nn_search_method": "DIRECT7",
         "ndt_resolution": 0.5,
-        "verbose": false
+        "verbose": true
       }
     }
   },

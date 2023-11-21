@@ -76,7 +76,7 @@ namespace lots::slam::wrapper
                 {
                     if (parse_sensor_availability(config_file, "lidar", i))
                     {
-                        lidar_list.push_back(Lidar(i));
+                        lidar_list.emplace_back(i);
                         tmp_prior_odom_topic = parse_prior_odom_topic(config_file, "lidar", i);
                         if (!tmp_prior_odom_topic.empty()) {
                             lidar_list[i].prior_odom_sub = n->create_subscription<nav_msgs::msg::Odometry>(tmp_prior_odom_topic, 10, std::bind(
@@ -88,9 +88,16 @@ namespace lots::slam::wrapper
                         std::string imu_topic;
                         n->get_parameter<std::string>("imu_topic", imu_topic);
                         if(!imu_topic.empty()) {
-                            std::cout<<"IMU tight coupling enabled"<<std::endl;
+                            std::cout<<"RECEIVING IMU DATA"<<std::endl;
                             lidar_list[i].imu_sub = n->create_subscription<sensor_msgs::msg::Imu>(imu_topic, sensor_qos, std::bind(
                                     &lots::slam::wrapper::Lidar::imu_callback, lidar_list[i], _1));
+                        }
+                        std::string gnss_topic;
+                        n->get_parameter<std::string>("gnss_topic", gnss_topic);
+                        if(!gnss_topic.empty()) {
+                            std::cout << "RECEIVING GNSS DATA" << std::endl;
+                            lidar_list[i].gnss_sub = n->create_subscription<sensor_msgs::msg::NavSatFix>(gnss_topic, sensor_qos, std::bind(
+                                    &lots::slam::wrapper::Lidar::gnss_callback, lidar_list[i], _1));
                         }
                         backend.backend_handler->add_sensor_graph(LIDAR, i);
                     }

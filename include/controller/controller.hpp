@@ -53,6 +53,7 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
+#include <nav_msgs/msg/odometry.hpp>
 
 namespace lots::slam::wrapper {
 /**
@@ -83,6 +84,9 @@ namespace lots::slam::wrapper {
         std::string global_frame;
 
         Skeleton skeleton;
+
+        rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
+
 
     public:
         /* Methods -------------------------------------------------------------------------------------- */

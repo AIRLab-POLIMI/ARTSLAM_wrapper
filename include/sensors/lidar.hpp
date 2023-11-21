@@ -34,6 +34,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/convert.h>
 #include <tf2/LinearMath/Matrix3x3.h>
+#include <backend/navsat_conversions.h>
 //#include <tf2_eigen/tf2_eigen.hpp>
 
 using namespace std::placeholders;
@@ -93,6 +94,7 @@ namespace lots::slam::wrapper {
          * @param msg Template message which depends from the sensor type.
          */
         void callback(const sensor_msgs::msg::PointCloud2 &msg) override {
+        //return;
             pcl::PointCloud<Point3I>::Ptr cloud(new pcl::PointCloud<Point3I>());
             pcl::fromROSMsg(msg, *cloud);
             cloud->header.seq = counter;
@@ -116,6 +118,42 @@ namespace lots::slam::wrapper {
 
             (static_cast<LiDARTracker*>(frontend.modules["tracker"].get()))->update_imu_observer(_imu_msg, "raw");
         }
+
+        void gnss_callback(const sensor_msgs::msg::NavSatFix &msg) {
+            GNSS_MSG::Ptr _gnss_msg(new GNSS_MSG());
+
+            _gnss_msg->header_.timestamp_ = msg.header.stamp.sec * 1000000000ull + msg.header.stamp.nanosec;
+            _gnss_msg->header_.frame_id_ = msg.header.frame_id;
+            _gnss_msg->lla_ = EigVector3d(msg.latitude, msg.longitude, msg.altitude);
+
+            if(msg.position_covariance_type != 0) {
+                EigMatrix3d cov = EigMatrix3d::Identity();
+                cov(0,0) = msg.position_covariance[0];
+                cov(0,1) = msg.position_covariance[1];
+                cov(0,2) = msg.position_covariance[2];
+                cov(1,0) = msg.position_covariance[3];
+                cov(1,1) = msg.position_covariance[4];
+                cov(1,2) = msg.position_covariance[5];
+                cov(2,0) = msg.position_covariance[6];
+                cov(2,1) = msg.position_covariance[7];
+                cov(2,2) = msg.position_covariance[8];
+                _gnss_msg->covariance_ = cov;
+            }
+            
+            /*double northing;
+            double easting;
+            std::string zone;
+            double gamma;
+            RobotLocalization::NavsatConversions::LLtoUTM(msg.latitude, msg.longitude, northing, easting, zone, gamma);
+          
+            std::ofstream gpsoutfile;
+            gpsoutfile.open("/home/matteo/risultati/utm_false.txt", std::ios::app);
+            gpsoutfile << std::fixed << std::setprecision(15);
+            gpsoutfile << northing << " " << easting << "\n";
+            gpsoutfile.close();*/
+
+            backend->backend_handler->update_gnss_observer(_gnss_msg, "raw");
+        };
 
         /**
          * Sensor callback for the prior odom topic stram.
@@ -149,6 +187,7 @@ namespace lots::slam::wrapper {
         };
     public:
         rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub;
+        rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr gnss_sub;
     };
 }
 
