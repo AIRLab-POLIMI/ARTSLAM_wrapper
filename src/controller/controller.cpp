@@ -38,6 +38,7 @@ namespace lots::slam::wrapper {
         node->declare_parameter("base_frame", rclcpp::ParameterValue("base_link"));
         node->declare_parameter("global_frame", rclcpp::ParameterValue("map"));
         node->declare_parameter("odom_frame", rclcpp::ParameterValue("odom"));
+        node->declare_parameter("sensor_frame", rclcpp::ParameterValue("os_sensor"));
         node->declare_parameter("imu_topic", rclcpp::ParameterValue(""));
         node->declare_parameter("gnss_topic", rclcpp::ParameterValue(""));
         node->declare_parameter("delay", rclcpp::ParameterValue(200000000));
@@ -48,6 +49,7 @@ namespace lots::slam::wrapper {
         node->get_parameter<std::string>("base_frame", base_frame);
         node->get_parameter<std::string>("global_frame", global_frame);
         node->get_parameter<std::string>("odom_frame", odom_frame);
+        node->get_parameter<std::string>("sensor_frame", sensor_frame);
         node->get_parameter<uint>("delay", delay);
         config_file = "/home/matteo/ros2_ws/src/ARTSLAM_wrapper/config/KITTI.json";
         std::cout << config_file << std::endl;
@@ -94,8 +96,15 @@ namespace lots::slam::wrapper {
     }
 
     void Controller::timer_callback() {
-        if (!latest_transform.header.frame_id.empty()) {
+        /*if (!latest_transform.header.frame_id.empty()) {
             latest_transform.header.stamp = rclcpp::Time(latest_transform.header.stamp) + (node->now() - last_time);
+
+            tf_broadcaster->sendTransform(latest_transform);
+            last_time = node->now();
+        }*/
+
+        if(!high_freq_transform.header.frame_id.empty()) {
+            high_freq_transform.header.stamp = rclcpp::Time(latest_transform.header.stamp) + (node->now() - last_time);
 
             tf_broadcaster->sendTransform(latest_transform);
             last_time = node->now();
@@ -130,10 +139,59 @@ namespace lots::slam::wrapper {
 
         tf_broadcaster->sendTransform(latest_transform);
         last_time = node->now();
+
+        // TODO un lock qui non fa male a nessuno
+        std::lock_guard<std::mutex> lock(map2odom_mutex_);
+        map2odom_timestamp_ = slam_output->last_point_cloud_.value()->header.stamp;
+        map2odom_ = slam_output->map_to_odom_.value();
     }
 
     void Controller::update_slam_output_observer(const SLAMOutput_MSG::ConstPtr &slam_output, const std::string &id) {
+        
+    }
 
+    void Controller::update_odometry_observer(Odometry_MSG::Ptr odometry_msg, const std::string& id) {
+        high_freq_transform.header.frame_id = global_frame;
+        high_freq_transform.header.child_frame_id = sensor_frame;
+
+        EigIsometry3d true_odom = EigIsometry3d::Identity();
+        {
+            std::unique_lock<std::mutex> lock(map2odom_mutex_);
+            // TODO should also linearize?
+            EigIsometry3d odom = EigIsometry3d::Identity();
+            odom.translation() = odometry_msg->value_.block<3,1>(0,3);
+            odom.linear() = odometry_msg->value_.block<3,3>(0,0);
+            true_odom = map2odom_ * odom;
+        }
+
+        tf2::Quaternion q_;
+        tf2::Quaternion q_;
+        tf2::Matrix3x3(true_odom->rotation().coeff(0, 0),
+                       true_odom->rotation().coeff(0, 1),
+                       true_odom->rotation().coeff(0, 2),
+                       true_odom->rotation().coeff(1, 0),
+                       true_odom->rotation().coeff(1, 1),
+                       true_odom->rotation().coeff(1, 2),
+                       true_odom->rotation().coeff(2, 0),
+                       true_odom->rotation().coeff(2, 1),
+                       true_odom->rotation().coeff(2, 2)).getRotation(q_);
+
+        tf2::convert(q_, high_freq_transform.transform.rotation);
+
+        high_freq_transform.transform.translation.x = true_odom.translation().x();
+        high_freq_transform.transform.translation.y = true_odom.translation().y();
+        high_freq_transform.transform.translation.z = true_odom.translation().z();
+        auto stamp = odom_msg->header_.timestamp_;
+        high_freq_transform.header.stamp = rclcpp::Time(stamp / 1000000000ull,
+                                                     stamp % 1000000000ull);
+
+        // TODO do I need to?
+        //tf_broadcaster->sendTransform(latest_transform);
+        last_time = node->now();
+    }
+
+    void Controller::update_odometry_observer(Odometry_MSG::ConstPtr odometry_msg, const std::string& id) {
+        
     }
 
     void Controller::show_markers(std::vector<EigIsometry3d> poses) {

@@ -63,7 +63,7 @@ namespace lots::slam::wrapper {
  * ARTSLAM kernel with the desired sensors by allocating front-ends and also the desired loop detectors.
  * The controller is also in charge to manage the bridge-visualizer.
  */
-    class Controller : public SLAMOutputObserver {
+    class Controller : public SLAMOutputObserver, public OdometryObserver {
     private:
         /* Attributes ----------------------------------------------------------------------------------- */
         std::shared_ptr<rclcpp::Node> node = rclcpp::Node::make_shared("offline_slam_server");
@@ -72,6 +72,7 @@ namespace lots::slam::wrapper {
         rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr markers_pub;
         std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster;
         geometry_msgs::msg::TransformStamped latest_transform;
+        geometry_msgs::msg::TransformStamped high_freq_transform;
         uint delay;
         rclcpp::Time last_time;
 
@@ -82,8 +83,14 @@ namespace lots::slam::wrapper {
         std::string base_frame;
         std::string odom_frame;
         std::string global_frame;
+        std::string sensor_frame;
 
         Skeleton skeleton;
+
+        std::mutex map2odom_mutex_;
+
+        int64_t map2odom_timestamp_ = 0.0;
+        EigIsometry3d map2odom_ = EigIsometry3d::Identity();
 
         rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
 
@@ -102,6 +109,10 @@ namespace lots::slam::wrapper {
         // Observer updating interfaces
         void update_slam_output_observer(const SLAMOutput_MSG::Ptr& slam_output, const std::string& id) override;
         void update_slam_output_observer(const SLAMOutput_MSG::ConstPtr& slam_output, const std::string& id) override;
+
+        // Observer updating interfaces
+        void update_odometry_observer(Odometry_MSG::Ptr odometry_msg, const std::string& id) override;
+        void update_odometry_observer(Odometry_MSG::ConstPtr odometry_msg, const std::string& id) override;
 
         void init_tf();
         void timer_callback();
